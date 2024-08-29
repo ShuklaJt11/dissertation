@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
 
-from PIL import Image, ImageChops
+from PIL import Image, ImageChops, ImageFilter
 from torchvision import transforms
 from typing import List, Tuple
 from torch import Tensor
@@ -15,10 +15,11 @@ PASSED_IMAGES_PKL = 'pickles/correct_images.pkl'
 IMAGES_BY_LEVEL_PKL = 'pickles/correct_images_with_level.pkl'
 CLASS_NAMES_PKL = 'pickles/classnames.pkl'
 MODEL_PKL = 'pickles/resnet50_pickle.pkl'
-NOISE_RATIO = 0.1
+NOISE_RATIO = 0.05
 SEED_VALUE = 66
 ROTATE_ANGLE = 45
 SHIFT_DELTA = 30
+SHEAR_FACTOR = 0.2
 transform_to_tensor = transforms.ToTensor()
 transform_to_image_object = transforms.ToPILImage()
 transform_for_model = transforms.Compose([
@@ -66,6 +67,28 @@ def add_mirror_horizontal(image_tensor: Tensor, count: int) -> Tensor:
         image = image.transpose(Image.FLIP_TOP_BOTTOM)
     return transform_to_tensor(image)
 
+def add_shear_vertical(image_tensor: Tensor, count: int) -> Tensor:
+    image = transform_to_image_object(image_tensor)
+
+    yshift = abs(count * SHEAR_FACTOR) * image.width
+    new_height = image.height + int(round(yshift))
+    sheared_vertical = image.transform((image.width, new_height), Image.AFFINE, (1, 0, 0, SHEAR_FACTOR, 1, -yshift if SHEAR_FACTOR > 0 else 0), Image.BICUBIC)
+    return transform_to_tensor(sheared_vertical)
+
+def add_shear_horizontal(image_tensor: Tensor, count: int) -> Tensor:
+    image = transform_to_image_object(image_tensor)
+
+    xshift = abs(count * SHEAR_FACTOR) * image.height
+    new_width = image.width + int(round(xshift))
+    sheared_horizontal = image.transform((new_width, image.height), Image.AFFINE, (1, SHEAR_FACTOR, -xshift if SHEAR_FACTOR > 0 else 0, 0, 1, 0), Image.BICUBIC)
+    return transform_to_tensor(sheared_horizontal)
+
+def add_blur(image_tensor: Tensor, count: int) -> Tensor:
+    image = transform_to_image_object(image_tensor)
+    for _ in range(count):
+        image = image.filter(ImageFilter.BLUR)
+    return transform_to_tensor(image)
+
 attack_actions = {
     "random_noise": add_random_noise,
     "rotation_clock": add_rotation_clock,
@@ -74,6 +97,9 @@ attack_actions = {
     "shifting_right": add_shift_right,
     "mirroring_vertical": add_mirror_vertical,
     "mirroring_horizontal": add_mirror_horizontal,
+    "shearing_vertical": add_shear_vertical,
+    "shearing_horizontal": add_shear_horizontal,
+    "blur_image": add_blur,
 }
     
 def imshow(inp: List, title: str=None):

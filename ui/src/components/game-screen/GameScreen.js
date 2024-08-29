@@ -5,10 +5,11 @@ import MainImage from '../main-image/MainImage';
 import LoadingAnimation from '../loader/LoadingAnimation';
 import AttackArea from '../attack-area/AttackArea';
 import IntroModal from '../intro-modal/IntroModal';
+import GameAlert from '../game-alert/GameAlert';
 
 import { fetchImageApi, fetchImageByLevelApi, attackList, maxAttacks } from '../../services/utils';
 
-const GameScreen = () => {
+const GameScreen = ({gameTheme, toggleTheme}) => {
     const [loading, setLoading] = useState(true);
     const [imageUrl, setImageUrl] = useState('');
     const [attackedImageUrl, setAttackedImageUrl] = useState('');
@@ -24,6 +25,9 @@ const GameScreen = () => {
     });
     const [attackCount, setAttackCount] = useState(0);
     const [disableAdd, setDisableAdd] = useState(false);
+    const [showAlert, setShowAlert] = useState(false);
+    const [alertMessage, setAlertMessage] = useState("");
+    const [alertType, setAlertType] = useState("");
 
     const handleOpen = () => setOpenModal(true);
     
@@ -92,6 +96,18 @@ const GameScreen = () => {
         else setDisableAdd(true);
     }
 
+    const openAlert = (type, message) => {
+        setAlertMessage(message);
+        setAlertType(type);
+        setShowAlert(true);
+    }
+
+    const closeAlert = () => {
+        setShowAlert(false);
+        setAlertMessage("");
+        setAlertType("");
+    }
+
     useEffect(toggleAttackStatus, [attackCount])
 
     return (
@@ -113,10 +129,12 @@ const GameScreen = () => {
                         setSelectedAttacks={setSelectedAttacks}
                         attackCount={attackCount}
                         setAttackCount={setAttackCount}
-                        disableAdd={disableAdd} />
+                        disableAdd={disableAdd}
+                        openAlert={openAlert} />
                 </Grid>
             </Grid>
-            <IntroModal open={openModal} selectLevel={selectLevel} />
+            <IntroModal open={openModal} selectLevel={selectLevel} gameTheme={gameTheme} toggleTheme={toggleTheme} />
+            <GameAlert open={showAlert} message={alertMessage} severity={alertType} handleClose={closeAlert} />
         </Box>
     );
 };

@@ -25,8 +25,9 @@ const AttackArea = ({
     setSelectedAttacks,
     attackCount,
     setAttackCount,
-    disableAdd }) => {
-
+    disableAdd,
+    openAlert 
+}) => {
     const attckAI = () => {
         setLoading(true)
         const requestPayload = {
@@ -56,6 +57,8 @@ const AttackArea = ({
             .then(response => response.json())
             .then(data => {
                 console.log(data)
+                if (data.attackedTable[0].name !== data.originalTable[0].name ) openAlert("success", "Congratulations! You've beaten the AI.");
+                else openAlert("info", "The image is still correctly recognized by the AI.");
                 setImageData(data)
                 setLoading(false)
             })
@@ -116,40 +119,47 @@ const AttackArea = ({
     return (
         <Box display="flex" justifyContent="center" alignItems="center" height="calc(100vh - 48px)" flexDirection="column">
             <ListArea>
-                <List dense={false} subheader={<ListSubheader><Typography variant='body1' textAlign={"center"} sx={{marginTop: "15px"}}>Attacks: {attackCount} / {maxAttacks}</Typography></ListSubheader>}>
+                <List dense={true} subheader={<ListSubheader><Typography variant='body1' textAlign={"center"} sx={{marginTop: "15px"}}>Attacks: {attackCount} / {maxAttacks}</Typography></ListSubheader>}>
                 {
                     attackList.map(attack => {
+                        let currentAttack = {
+                            ...attack,
+                            ...selectedAttacks.find(selectedAttack => attack.id === selectedAttack.id)
+                        }
                         return (
                             <ListItem
-                                key={attack.id}
+                                key={currentAttack.id}
                                 secondaryAction={
                                     <Box display="flex" justifyContent="center" alignItems="center" sx={{width: "100px"}}>
                                         {
-                                            selectedAttacks.find(selectedAttack => attack.id === selectedAttack.id).count === 0 ?
-                                            <IconButton edge="end" aria-label="Remove Attack" onClick={() => removeAttack(attack.id)} disabled sx={{margin: 0}}>
+                                            currentAttack.count === 0 ?
+                                            <IconButton edge="end" aria-label="Remove Attack" onClick={() => removeAttack(currentAttack.id)} disabled sx={{margin: 0}}>
                                                 <RemoveIcon />
                                             </IconButton> :
-                                            <IconButton edge="end" aria-label="Remove Attack" onClick={() => removeAttack(attack.id)} sx={{margin: 0}}>
+                                            <IconButton edge="end" aria-label="Remove Attack" onClick={() => removeAttack(currentAttack.id)} sx={{margin: 0}}>
                                                 <RemoveIcon />
                                             </IconButton>
                                         }
-                                        <Typography variant='body1' flexGrow={1} textAlign={"center"}>{selectedAttacks.find(selectedAttack => attack.id === selectedAttack.id).count}</Typography>
+                                        <Typography variant='body1' flexGrow={1} textAlign={"center"}>{currentAttack.count}</Typography>
                                         {
                                             disableAdd ?
-                                            <IconButton edge="end" aria-label="Add Attack" onClick={() => addAttack(attack.id)} disabled sx={{margin: 0}}>
+                                            <IconButton edge="end" aria-label="Add Attack" onClick={() => addAttack(currentAttack.id)} disabled sx={{margin: 0}}>
                                                 <AddIcon />
                                             </IconButton> :
-                                            <IconButton edge="end" aria-label="Add Attack" onClick={() => addAttack(attack.id)} sx={{margin: 0}}>
+                                            (currentAttack.count < currentAttack.max_count ?
+                                            <IconButton edge="end" aria-label="Add Attack" onClick={() => addAttack(currentAttack.id)} sx={{margin: 0}}>
                                                 <AddIcon />
-                                            </IconButton>
+                                            </IconButton> :
+                                            <IconButton edge="end" aria-label="Add Attack" onClick={() => addAttack(currentAttack.id)} disabled sx={{margin: 0}}>
+                                                <AddIcon />
+                                            </IconButton>) 
                                         }
                                     </Box>
-                                    
                                 }
                             >
                                 <ListItemText
-                                primary={attack.name}
-                                secondary={attack.description}
+                                    primary={currentAttack.name}
+                                    secondary={`${currentAttack.description} (Max attack count: ${currentAttack.max_count})`}
                                 />
                             </ListItem>
                         )
