@@ -3,7 +3,7 @@ import { Box, Grid } from '@mui/material';
 
 import { imageLocation } from '../../services/utils';
 import ImageInfo from '../image-info/ImageInfo';
-import ResetButton from '../reset-button/ResetButton';
+import GeneralButton from '../general-button/GeneralButton';
 
 const MainImage = ({imageUrl, imageData, attackedImageUrl, reset}) => {
   return (
@@ -32,7 +32,7 @@ const MainImage = ({imageUrl, imageData, attackedImageUrl, reset}) => {
         </div>
       }
       <ImageInfo imageData={imageData} />
-      <ResetButton action={reset} />
+      <GeneralButton action={reset} label="Get New Image" />
     </Box>
   );
 };

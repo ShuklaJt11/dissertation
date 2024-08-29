@@ -5,17 +5,20 @@ import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
 
-from PIL import Image
+from PIL import Image, ImageChops
 from torchvision import transforms
-from typing import List, Tuple, Dict
+from typing import List, Tuple
 from torch import Tensor
 
 FILE_SERVER_ROOT = '../file-server/'
 PASSED_IMAGES_PKL = 'pickles/correct_images.pkl'
+IMAGES_BY_LEVEL_PKL = 'pickles/correct_images_with_level.pkl'
 CLASS_NAMES_PKL = 'pickles/classnames.pkl'
 MODEL_PKL = 'pickles/resnet50_pickle.pkl'
 NOISE_RATIO = 0.1
 SEED_VALUE = 66
+ROTATE_ANGLE = 45
+SHIFT_DELTA = 30
 transform_to_tensor = transforms.ToTensor()
 transform_to_image_object = transforms.ToPILImage()
 transform_for_model = transforms.Compose([
@@ -31,8 +34,46 @@ def add_random_noise(image_tensor: Tensor, count: int) -> Tensor:
     image = noise * actual_noise_ratio + image_tensor * (1 - actual_noise_ratio)
     return image
 
+def add_rotation_clock(image_tensor: Tensor, count: int) -> Tensor:
+    image = transform_to_image_object(image_tensor)
+    rotated_image_clockwise = image.rotate(-count * ROTATE_ANGLE, expand=True)
+    return transform_to_tensor(rotated_image_clockwise)
+
+def add_rotation_anti(image_tensor: Tensor, count: int) -> Tensor:
+    image = transform_to_image_object(image_tensor)
+    rotated_image_anticlockwise = image.rotate(count * ROTATE_ANGLE, expand=True)
+    return transform_to_tensor(rotated_image_anticlockwise)
+
+def add_shift_left(image_tensor: Tensor, count: int) -> Tensor:
+    image = transform_to_image_object(image_tensor)
+    shifted_left = ImageChops.offset(image, -count * SHIFT_DELTA, 0)
+    return transform_to_tensor(shifted_left)
+
+def add_shift_right(image_tensor: Tensor, count: int) -> Tensor:
+    image = transform_to_image_object(image_tensor)
+    shifted_right = ImageChops.offset(image, count * SHIFT_DELTA, 0)
+    return transform_to_tensor(shifted_right)
+
+def add_mirror_vertical(image_tensor: Tensor, count: int) -> Tensor:
+    image = transform_to_image_object(image_tensor)
+    for _ in range(count):
+        image = image.transpose(Image.FLIP_LEFT_RIGHT)
+    return transform_to_tensor(image)
+
+def add_mirror_horizontal(image_tensor: Tensor, count: int) -> Tensor:
+    image = transform_to_image_object(image_tensor)
+    for _ in range(count):
+        image = image.transpose(Image.FLIP_TOP_BOTTOM)
+    return transform_to_tensor(image)
+
 attack_actions = {
-    "random_noise": add_random_noise
+    "random_noise": add_random_noise,
+    "rotation_clock": add_rotation_clock,
+    "rotation_anti": add_rotation_anti,
+    "shifting_left": add_shift_left,
+    "shifting_right": add_shift_right,
+    "mirroring_vertical": add_mirror_vertical,
+    "mirroring_horizontal": add_mirror_horizontal,
 }
     
 def imshow(inp: List, title: str=None):
@@ -48,7 +89,6 @@ def imshow(inp: List, title: str=None):
     plt.show()
 
 def get_random_image() -> str:
-    transform_to_tensor = transforms.ToTensor()    
     with open(PASSED_IMAGES_PKL, 'rb') as f:
         correct_images = pickle.load(f)
 
@@ -71,6 +111,29 @@ def get_random_image() -> str:
 
     return image_path
 
+def get_random_image_by_level(level: int) -> str:    
+    with open(IMAGES_BY_LEVEL_PKL, 'rb') as f:
+        correct_images_by_level = pickle.load(f)
+
+    random_image = random.choice(correct_images_by_level[level])
+    image_path_split = random_image.split('/')
+    image_path = '/'.join(image_path_split[-3:])
+
+    image_obj = Image.open(FILE_SERVER_ROOT + image_path)
+
+    image_tensor = transform_to_tensor(image_obj)
+
+    while (image_tensor.size(0) != 3):
+        random_image = random.choice(correct_images_by_level[level])
+        image_path_split = random_image.split('/')
+        image_path = '/'.join(image_path_split[-3:])
+
+        image_obj = Image.open(FILE_SERVER_ROOT + image_path)
+
+        image_tensor = transform_to_tensor(image_obj)
+
+    return image_path
+
 def get_unattacked_image(image_path: str) -> Tuple:
     image_obj = Image.open(FILE_SERVER_ROOT + image_path)
     image = transform_to_tensor(image_obj)
@@ -84,7 +147,8 @@ def get_attacked_image(image_path: str, attacks: List) -> Tuple:
 
     image = transform_to_tensor(image_obj)
     for attack in attacks:
-        image = attack_actions[attack["id"]](image_tensor=image, count=attack["count"])
+        if attack["count"] > 0:
+            image = attack_actions[attack["id"]](image_tensor=image, count=attack["count"])
     image = transform_for_model(image)
     # original = image
 
@@ -97,7 +161,8 @@ def get_attacked_image_object(image_path: str, attacks: List) -> Image:
     image_obj = Image.open(FILE_SERVER_ROOT + image_path)
     image = transform_to_tensor(image_obj)
     for attack in attacks:
-        image = attack_actions[attack["id"]](image_tensor=image, count=attack["count"])
+        if attack["count"] > 0:
+            image = attack_actions[attack["id"]](image_tensor=image, count=attack["count"])
 
     return transform_to_image_object(image)
 

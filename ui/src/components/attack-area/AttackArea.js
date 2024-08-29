@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Box, List, ListItem, ListItemText, IconButton, Typography, ListSubheader } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
+import RefreshIcon from '@mui/icons-material/Refresh';
 
 import AttackButton from '../attack-button/AttackButton';
+import GeneralButton from '../general-button/GeneralButton';
 
-import { attackImageApi, fetchAttackedImageApi, attackList } from '../../services/utils';
+import { attackImageApi, fetchAttackedImageApi, attackList, maxAttacks } from '../../services/utils';
 
 const ListArea = styled('div')(({ theme }) => ({
     backgroundColor: theme.palette.background.paper,
@@ -14,17 +16,16 @@ const ListArea = styled('div')(({ theme }) => ({
     width: "100%",
 }));
 
-const AttackArea = ({setImageData, setLoading, imageUrl, setAttackedImageUrl}) => {
-    const [selectedAttacks, setSelectedAttacks] = useState(() => {
-        return attackList.map(attack => {
-            return {
-                id: attack.id,
-                count: 0
-            }
-        })
-    });
-    const [attackCount, setAttackCount] = useState(0);
-    const [disableAdd, setDisableAdd] = useState(false);
+const AttackArea = ({
+    setImageData, 
+    setLoading, 
+    imageUrl, 
+    setAttackedImageUrl, 
+    selectedAttacks, 
+    setSelectedAttacks,
+    attackCount,
+    setAttackCount,
+    disableAdd }) => {
 
     const attckAI = () => {
         setLoading(true)
@@ -100,17 +101,22 @@ const AttackArea = ({setImageData, setLoading, imageUrl, setAttackedImageUrl}) =
         setSelectedAttacks(selectedAttacksList);
     }
 
-    const toggleAttackStatus = () => {
-        if (attackCount < 5) setDisableAdd(false);
-        else setDisableAdd(true);
+    const resetAttacks = () => {
+        setAttackCount(0);
+        setSelectedAttacks(() => {
+            return attackList.map(attack => {
+                return {
+                    id: attack.id,
+                    count: 0
+                };
+            });
+        });
     }
-
-    useEffect(toggleAttackStatus, [attackCount])
 
     return (
         <Box display="flex" justifyContent="center" alignItems="center" height="calc(100vh - 48px)" flexDirection="column">
             <ListArea>
-                <List dense={false} subheader={<ListSubheader><Typography variant='body1' textAlign={"center"} sx={{marginTop: "15px"}}>Attacks: {attackCount} / 5</Typography></ListSubheader>}>
+                <List dense={false} subheader={<ListSubheader><Typography variant='body1' textAlign={"center"} sx={{marginTop: "15px"}}>Attacks: {attackCount} / {maxAttacks}</Typography></ListSubheader>}>
                 {
                     attackList.map(attack => {
                         return (
@@ -151,7 +157,10 @@ const AttackArea = ({setImageData, setLoading, imageUrl, setAttackedImageUrl}) =
                 }
                 </List>
             </ListArea>
-            <AttackButton attackHeading="Attack" attackDescription="" action={attckAI} />
+            <Box display="flex" margin="15px" width="100%">
+                <AttackButton action={attckAI} />
+                <GeneralButton label={<RefreshIcon />} action={resetAttacks} extraStyles={{margin: 0, marginLeft: "10px"}} />
+            </Box>
         </Box>
     );
 };
