@@ -15,7 +15,7 @@ def get_image_path():
     return Response(
         response=json.dumps({
             'image_url': image_path,
-            'probabilities': output
+            'originalTable': output
         }),
         status=200,
         mimetype='application/json'
